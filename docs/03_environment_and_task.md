@@ -203,9 +203,19 @@ Cell (i, j)     ← index ใน grid 10×10
 ```
 
 สูตร:
-- `u = (x - (cx - hx)) / (2 * hx)` — cx = plate center x, hx = plate half-size x
-- `v = (y - (cy - hy)) / (2 * hy)`
-- `i = floor(v * H)`, `j = floor(u * W)`
+- $u = \frac{x - (c_x - h_x)}{2 h_x}$ — $c_x$ = plate center x, $h_x$ = plate half-size x
+- $v = \frac{y - (c_y - h_y)}{2 h_y}$
+- $i = \lfloor v \times H \rfloor$, $j = \lfloor u \times W \rfloor$
+
+**ตัวอย่างการคำนวณ**:
+
+ถ้า contact centroid อยู่ที่ world $(0.15, 0.25, 0.58)$ และ plate center = $(0.10, 0.20)$, half = $(0.10, 0.10)$:
+
+$$u = \frac{0.15 - (0.10 - 0.10)}{2 \times 0.10} = \frac{0.15}{0.20} = 0.75$$
+
+$$v = \frac{0.25 - (0.20 - 0.10)}{2 \times 0.10} = \frac{0.15}{0.20} = 0.75$$
+
+$$i = \lfloor 0.75 \times 10 \rfloor = 7, \quad j = \lfloor 0.75 \times 10 \rfloor = 7 \quad \Rightarrow \text{cell}(7, 7)$$
 
 ---
 
@@ -233,9 +243,10 @@ Cell (i, j)     ← index ใน grid 10×10
 2. คำนวณ force magnitude: `||force_vector||` (L2 norm)
 3. รวม force ทุก link: `total_force = sum(magnitudes)`
 4. คำนวณ **force-weighted centroid**:
-   ```
-   centroid = Σ(force_i × position_i) / Σ(force_i)
-   ```
+
+   $$\vec{p}_{\text{centroid}} = \frac{\sum_{k=1}^{4} F_k \cdot \vec{p}_k}{\sum_{k=1}^{4} F_k}$$
+
+   โดย $F_k = \|\vec{f}_k\|_2$ (L2 norm) และ $\vec{p}_k$ = world position ของ link $k$
 5. ถ้า `total_force > 0.5 N` → นับว่า "contact"
 6. ใช้ centroid (ไม่ใช่ TCP) แปลงเป็น grid cell
 
@@ -266,17 +277,21 @@ graph LR
 
 ### รายละเอียดแต่ละ term
 
+**สมการรวม:**
+
+$$r_t = r_{\text{reach}} + r_{\text{contact}} + r_{\text{clean}} + r_{\text{sweep}} + r_{\text{time}} + r_{\text{jerk}} + r_{\text{act}} + r_{\text{force}} + r_{\text{success}}$$
+
 | # | Term | Weight | สูตร | อธิบาย |
 |--:|------|--------|------|--------|
-| 1 | **r_reach** | 0.5 | `w × (1 - tanh(5 × dist(palm, plate)))` | ให้รางวัลเมื่อ palm เข้าใกล้จาน (0 ถึง 0.5) |
-| 2 | **r_contact** | 1.0 | `w × is_contacting` | +1.0 ทุก step ที่สัมผัสจาน |
-| 3 | **r_clean** | 10.0 | `w × delta_clean` | +10 ต่อ cell ใหม่ที่ล้าง (max +90 ถ้าล้าง 9 cells/step) |
-| 4 | **r_sweep** | 0.3 | `w × lateral_speed × is_contact` | ให้รางวัลเมื่อเลื่อนมือด้านข้าง (XY) ขณะสัมผัส — สนับสนุน wiping motion |
-| 5 | **r_time** | -0.01 | `-w per step` | ค่าปรับเวลา — กระตุ้นให้รีบทำ |
-| 6 | **r_jerk** | -0.05 | `-w × ‖aₜ − aₜ₋₁‖²` | ลงโทษการเปลี่ยน action กะทันหัน — ให้การเคลื่อนไหวนุ่มนวล |
-| 7 | **r_act** | -0.005 | `-w × ‖aₜ‖²` | ลงโทษค่า action ใหญ่ — ป้องกันใช้แรงเยอะเกิน |
-| 8 | **r_force** | -0.01 | `-w × max(0, F - 50)` | ลงโทษเมื่อแรงเกิน soft limit (50N) |
-| 9 | **r_success** | +50.0 | one-shot เมื่อ cleaned ≥ 95% | รางวัลใหญ่ตอนสำเร็จ (ให้แค่ครั้งเดียว) |
+| 1 | **$r_{\text{reach}}$** | 0.5 | $w \times (1 - \tanh(5d))$, $d = \|\text{palm} - \text{plate}\|$ | ให้รางวัลเมื่อ palm เข้าใกล้จาน (0 ถึง 0.5) |
+| 2 | **$r_{\text{contact}}$** | 1.0 | $w \times \mathbb{1}[F > 0.5]$ | +1.0 ทุก step ที่สัมผัสจาน |
+| 3 | **$r_{\text{clean}}$** | 10.0 | $w \times \Delta_{\text{clean}}$ | +10 ต่อ cell ใหม่ที่ล้าง (max +90 ถ้า 9 cells/step) |
+| 4 | **$r_{\text{sweep}}$** | 0.3 | $w \times \|\dot{p}_{xy}\| \times \mathbb{1}[\text{contact}]$ | ให้รางวัลเมื่อเลื่อนมือด้านข้าง (XY) — สนับสนุน wiping motion |
+| 5 | **$r_{\text{time}}$** | -0.01 | $-w$ per step | ค่าปรับเวลา — กระตุ้นให้รีบทำ |
+| 6 | **$r_{\text{jerk}}$** | -0.05 | $-w \times \|a_t - a_{t-1}\|^2$ | ลงโทษ action กะทันหัน — ให้การเคลื่อนไหวนุ่มนวล |
+| 7 | **$r_{\text{act}}$** | -0.005 | $-w \times \|a_t\|^2$ | ลงโทษค่า action ใหญ่ — ป้องกันใช้แรงเยอะ |
+| 8 | **$r_{\text{force}}$** | -0.01 | $-w \times \max(0, F - 50)$ | ลงโทษเมื่อแรงเกิน soft limit (50N) |
+| 9 | **$r_{\text{success}}$** | +50.0 | one-shot เมื่อ cleaned $\geq 0.95$ | รางวัลใหญ่ตอนสำเร็จ (ให้แค่ครั้งเดียว) |
 
 ### Staged Design
 Reward ออกแบบเป็น "ขั้นบันได":

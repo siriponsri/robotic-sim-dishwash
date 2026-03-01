@@ -119,6 +119,17 @@ for step in range(max_steps):
 เมื่อเรารัน 100 episodes ได้ metric เฉลี่ย แต่ค่านี้อาจ **ผันผวน** ถ้าเรารันอีกครั้ง  
 Bootstrap CI บอกว่า "ค่าจริงน่าจะอยู่ในช่วงนี้ด้วยความมั่นใจ 95%"
 
+### สมการ (Percentile Bootstrap)
+
+ให้ $X = [x_1, x_2, \ldots, x_n]$ เป็น metric จาก $n$ episodes:
+
+1. **Resample**: สุ่ม $n$ ตัวอย่างจาก $X$ (with replacement) → $X^*$
+2. คำนวณ statistic: $\bar{x}^* = \text{mean}(X^*)$
+3. ทำซ้ำ $B = 1000$ ครั้ง → ได้ $[\bar{x}^*_1, \ldots, \bar{x}^*_B]$
+4. เรียงลำดับ → ตัดที่ percentile 2.5% และ 97.5%
+
+$$\text{CI}_{95\%} = \left[ \bar{x}^*_{(\lfloor 0.025B \rfloor)}, \; \bar{x}^*_{(\lfloor 0.975B \rfloor)} \right]$$
+
 ### วิธีทำ (อธิบายง่าย)
 
 1. มี data = [reward₁, reward₂, ..., reward₁₀₀] จาก 100 episodes
@@ -164,6 +175,53 @@ def bootstrap_ci(data, n_samples=1000, confidence=0.95):
 | CI กว้าง (เช่น [0.45, 0.85]) | ผลไม่เสถียร, ต้องทดสอบเพิ่ม |
 | CI ไม่ overlap ระหว่าง 2 methods | ต่างกันมีนัยสำคัญ |
 | CI overlap | อาจไม่ต่างกันจริง |
+
+---
+
+## Smoothing & Jerk Metrics (การปรับให้นิ่มนวล)
+
+### ทำไม Smoothing สำคัญ?
+
+ใน robotics การเคลื่อนไหวแบบกระตุก (jerky) ทำให้:
+- actuator สึกหรอ (wear) เร็วขึ้น
+- หุ่นยนต์อาจทำของเสียหายได้ (จานแตก)
+- ไม่ปลอดภัยสำหรับคนรอบข้าง
+
+### Jerk คืออะไร?
+
+**Jerk** วัดความเปลี่ยนแปลงของ action ต่อเนื่องกัน:
+
+$$\text{jerk}_t = \|a_t - a_{t-1}\|^2 = \sum_{d=1}^{25} (a_{t,d} - a_{t-1,d})^2$$
+
+$$\text{mean\_jerk} = \frac{1}{T} \sum_{t=1}^{T} \text{jerk}_t$$
+
+| Jerk ระดับ | ความหมาย |
+|---------|----------|
+| < 0.02 | smooth มาก (ดีเยี่ยม) |
+| 0.02–0.05 | พอใช้ได้ |
+| 0.05–0.10 | กระตุกบ้าง |
+| > 0.10 | กระตุกมาก (ไม่ดี) |
+
+### EMA Smoothing (ใช้ใน NB05 BaseController)
+
+$$\bar{a}_t = \alpha \cdot a_t + (1 - \alpha) \cdot \bar{a}_{t-1}, \quad \alpha = 0.3$$
+
+- $\alpha$ ก้าไป 1.0 → ไม่ smooth (ใช้ raw action)
+- $\alpha$ ก้าไป 0.0 → smooth มากเกิน (ไม่ responsive)
+- $\alpha = 0.3$ เป็นจุดสมดุลระหว่าง smoothness และ responsiveness
+
+### เปรียบเทียบ Jerk ก่อน-หลัง Smoothing
+
+| Policy | คาดการณ์ mean_jerk |
+|--------|---------------------|
+| Random | ~0.12 (กระตุกมาก) |
+| Heuristic (raw) | ~0.08 |
+| Heuristic + EMA | ~0.03–0.05 |
+| PPO (trained) | ~0.02–0.04 |
+| SAC (trained) | ~0.01–0.03 |
+| Residual SAC | ~0.01–0.03 |
+
+> PPO/SAC มี jerk penalty ใน reward ($r_{\text{jerk}} = -0.05 \times \|a_t - a_{t-1}\|^2$) จึงเรียนรู้การเคลื่อนไหวแบบ smooth โดยตรง
 
 ---
 
