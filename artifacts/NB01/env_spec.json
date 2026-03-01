@@ -1,0 +1,39 @@
+{
+  "env_id": "UnitreeG1DishWipe-v1",
+  "obs_mode": "state",
+  "control_mode": "pd_joint_delta_pos",
+  "obs_space_shape": [
+    1,
+    168
+  ],
+  "obs_dim": [
+    1,
+    168
+  ],
+  "act_space_shape": [
+    25
+  ],
+  "act_low": [
+    -1.0,
+    -1.0,
+    -1.0
+  ],
+  "act_high": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "robot_uid": "unitree_g1_simplified_upper_body",
+  "robot_dof": 25,
+  "scene": "kitchen_counter + sink + plate",
+  "info_keys": [
+    "elapsed_steps",
+    "success",
+    "fail",
+    "contact_force",
+    "delta_clean",
+    "cleaned_ratio",
+    "reconfigure"
+  ],
+  "num_envs": 1
+}

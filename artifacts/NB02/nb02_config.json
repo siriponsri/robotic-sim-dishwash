@@ -1,0 +1,10 @@
+{
+  "seed": 42,
+  "env_id": "UnitreeG1DishWipe-v1",
+  "control_mode": "pd_joint_delta_pos",
+  "grid_h": 10,
+  "grid_w": 10,
+  "brush_radius": 1,
+  "sim_steps": 100,
+  "n_explore": 200
+}

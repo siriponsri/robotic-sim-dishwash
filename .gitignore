@@ -1,0 +1,22 @@
+# Secrets
+.env.local
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+.env/
+.venv/
+
+# Artifacts (large files)
+artifacts/**/*.mp4
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store

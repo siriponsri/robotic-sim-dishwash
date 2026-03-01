@@ -1,0 +1,10 @@
+gymnasium==0.29.1
+mani-skill==3.0.0b22
+torch==2.10.0
+numpy==2.4.2
+matplotlib==3.10.8
+Pillow==12.1.1
+mediapy==1.2.6
+imageio[ffmpeg]==2.37.2
+ipython==9.10.0
+setuptools<81

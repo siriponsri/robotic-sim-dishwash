@@ -1,0 +1,18 @@
+{
+  "api_found": true,
+  "method": "scene.get_pairwise_contact_forces(palm_link, plate)",
+  "notes": [
+    "Pairwise contact forces between palm and plate available",
+    "info['contact_force'] available: tensor([0.])",
+    "link.get_net_contact_forces shape: [1, 3]"
+  ],
+  "force_shape": [
+    1,
+    3
+  ],
+  "force_sample": [
+    0.0,
+    0.0,
+    0.0
+  ]
+}
