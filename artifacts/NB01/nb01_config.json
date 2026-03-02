@@ -1,0 +1,9 @@
+{
+  "seed": 42,
+  "obs_mode": "state",
+  "control_mode": "pd_joint_delta_pos",
+  "smoke_steps": 50,
+  "apple_env_id": "UnitreeG1PlaceAppleInBowlFullBody-v1",
+  "dishwipe_env_id": "UnitreeG1DishWipeFullBody-v1",
+  "artifact_dir": "/root/robotic-sim-dishwash/artifacts/NB01"
+}

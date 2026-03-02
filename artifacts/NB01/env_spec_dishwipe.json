@@ -1,0 +1,12 @@
+{
+  "env_id": "UnitreeG1DishWipeFullBody-v1",
+  "obs_shape": [
+    192
+  ],
+  "act_shape": [
+    37
+  ],
+  "robot_uid": "unitree_g1",
+  "dof": 37,
+  "root_type": "free-floating"
+}

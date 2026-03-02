@@ -43,13 +43,17 @@ Base robot state + extras:
 from __future__ import annotations
 
 import copy
+import os
 from typing import Any
 
 import numpy as np
 import sapien
 import torch
+from transforms3d.euler import euler2quat
 
 from mani_skill.agents.robots.unitree_g1.g1 import UnitreeG1
+from mani_skill.agents.controllers import PDJointPosControllerConfig
+from mani_skill.agents.registration import register_agent
 from mani_skill.envs.sapien_env import BaseEnv
 from mani_skill.sensors.camera import CameraConfig
 from mani_skill.utils import sapien_utils
@@ -57,13 +61,59 @@ from mani_skill.utils.registration import register_env
 from mani_skill.utils.scene_builder.kitchen_counter import KitchenCounterSceneBuilder
 from mani_skill.utils.structs.types import GPUMemoryConfig, SceneConfig, SimConfig
 
+
+# ---------------------------------------------------------------------------
+# Custom agent: full-body G1 with fixed root (see apple_fullbody_env.py)
+# ---------------------------------------------------------------------------
+@register_agent()
+class UnitreeG1FullBodyFixedDW(UnitreeG1):
+    """Full-body G1 with fixed root for reliable standing (DishWipe)."""
+    uid = "unitree_g1_fullbody_fixed_dw"
+    fix_root_link = True
+    body_stiffness = 1e3
+    body_damping = 1e2
+    body_force_limit = 100
+
+    urdf_config = dict(
+        _materials=dict(
+            finger=dict(static_friction=2.0, dynamic_friction=2.0, restitution=0.0)
+        ),
+        link={
+            **{f"left_{k}_link": dict(material="finger", patch_radius=0.1, min_patch_radius=0.1)
+               for k in ["one", "two", "three", "four", "five", "six"]},
+            **{f"right_{k}_link": dict(material="finger", patch_radius=0.1, min_patch_radius=0.1)
+               for k in ["one", "two", "three", "four", "five", "six"]},
+            "left_palm_link": dict(material="finger", patch_radius=0.1, min_patch_radius=0.1),
+            "right_palm_link": dict(material="finger", patch_radius=0.1, min_patch_radius=0.1),
+        },
+    )
+
+    @property
+    def _controller_configs(self):
+        body_pd_joint_pos = PDJointPosControllerConfig(
+            self.body_joints, lower=None, upper=None,
+            stiffness=self.body_stiffness, damping=self.body_damping,
+            force_limit=self.body_force_limit, normalize_action=False,
+        )
+        body_pd_joint_delta_pos = PDJointPosControllerConfig(
+            self.body_joints, lower=-0.2, upper=0.2,
+            stiffness=self.body_stiffness, damping=self.body_damping,
+            force_limit=self.body_force_limit, use_delta=True,
+        )
+        return dict(
+            pd_joint_pos=dict(body=body_pd_joint_pos, balance_passive_force=True),
+            pd_joint_delta_pos=dict(body=body_pd_joint_delta_pos, balance_passive_force=True),
+        )
+
 from src.envs.dirt_grid import VirtualDirtGrid
 
 # ---------------------------------------------------------------------------
 # Constants (same as upper-body variant for consistency)
 # ---------------------------------------------------------------------------
-PLATE_HALF_SIZE = (0.10, 0.10, 0.003)
-PLATE_POS_IN_SINK = (0.10, 0.20, 0.58)
+PLATE_RADIUS = 0.12                              # plate radius (disc shape)
+PLATE_HALF_THICKNESS = 0.004                       # half-thickness (thin disc)
+PLATE_HALF_SIZE = (PLATE_RADIUS, PLATE_RADIUS, PLATE_HALF_THICKNESS)  # for dirt-grid compat
+PLATE_POS_IN_SINK = (0.15, 0.25, 0.59)            # plate inside kitchen sink basin
 
 GRID_H, GRID_W = 10, 10
 BRUSH_RADIUS = 1
@@ -103,8 +153,8 @@ _LEFT_CONTACT_LINKS = (
 class UnitreeG1DishWipeFullBodyEnv(BaseEnv):
     """Full-body G1 (37 DOF) dish-wiping task with VirtualDirtGrid."""
 
-    SUPPORTED_ROBOTS = ["unitree_g1"]
-    agent: UnitreeG1
+    SUPPORTED_ROBOTS = ["unitree_g1_fullbody_fixed_dw"]
+    agent: UnitreeG1FullBodyFixedDW
 
     SUPPORTED_REWARD_MODES = ["normalized_dense", "dense", "sparse", "none"]
 
@@ -128,11 +178,11 @@ class UnitreeG1DishWipeFullBodyEnv(BaseEnv):
         self._success_bonus_given: torch.Tensor | None = None
         self._contact_links: list = []
 
-        # Robot init pose — full-body G1 stands on ground (z=0)
-        self._robot_init_pose = copy.deepcopy(UnitreeG1.keyframes["standing"].pose)
-        self._robot_init_pose.p = [0, 0, 0]
+        # Robot init pose — standing, offset from counter (matches built-in)
+        self._robot_init_pose = copy.deepcopy(UnitreeG1FullBodyFixedDW.keyframes["standing"].pose)
+        self._robot_init_pose.p = [-0.3, 0, 0.755]
 
-        super().__init__(*args, robot_uids="unitree_g1", **kwargs)
+        super().__init__(*args, robot_uids="unitree_g1_fullbody_fixed_dw", **kwargs)
 
     # ------------------------------------------------------------------
     # Sim config
@@ -159,27 +209,35 @@ class UnitreeG1DishWipeFullBodyEnv(BaseEnv):
 
     @property
     def _default_human_render_camera_configs(self):
-        pose = sapien_utils.look_at([0.6, 0.7, 0.6], [0.0, 0.0, 0.35])
+        pose = sapien_utils.look_at([1.0, 1.2, 1.2], [-0.15, 0.0, 0.4])
         return CameraConfig("render_camera", pose=pose, width=512, height=512, fov=1)
 
     # ------------------------------------------------------------------
     # Scene
     # ------------------------------------------------------------------
     def _load_agent(self, options: dict):
-        super()._load_agent(options, sapien.Pose(p=[0, 0, 0]))
+        super()._load_agent(options, self._robot_init_pose)
 
     def _load_scene(self, options: dict):
-        # Kitchen counter
+        # Kitchen counter (includes ground plane with collision)
         self.scene_builder = KitchenCounterSceneBuilder(self)
         self.kitchen_scene = self.scene_builder.build(scale=KITCHEN_SCENE_SCALE)
 
-        # Plate (kinematic box)
+        # Plate (kinematic cylinder disc — more realistic than flat box)
         builder = self.scene.create_actor_builder()
-        builder.add_box_collision(half_size=list(PLATE_HALF_SIZE))
-        builder.add_box_visual(
-            half_size=list(PLATE_HALF_SIZE),
-            material=sapien.render.RenderMaterial(base_color=[0.9, 0.9, 0.9, 1.0]),
+        flat_pose = sapien.Pose(q=euler2quat(np.pi / 2, 0, 0))  # Y-axis → Z-axis
+        builder.add_cylinder_collision(
+            radius=PLATE_RADIUS, half_length=PLATE_HALF_THICKNESS,
+            pose=flat_pose,
         )
+        builder.add_cylinder_visual(
+            radius=PLATE_RADIUS, half_length=PLATE_HALF_THICKNESS,
+            material=sapien.render.RenderMaterial(
+                base_color=[0.95, 0.93, 0.88, 1.0],  # off-white ceramic
+            ),
+            pose=flat_pose,
+        )
+        builder.initial_pose = sapien.Pose(p=list(PLATE_POS_IN_SINK))
         self.plate = builder.build_kinematic("plate")
 
         # Contact link references
@@ -214,6 +272,7 @@ class UnitreeG1DishWipeFullBodyEnv(BaseEnv):
         if self.robot_init_qpos_noise > 0:
             qpos = qpos + torch.randn_like(qpos) * self.robot_init_qpos_noise
         self.agent.robot.set_qpos(qpos)
+        self.agent.robot.set_qvel(torch.zeros_like(qpos))   # zero velocity!
         self.agent.robot.set_pose(self._robot_init_pose)
 
         # Reset dirt grids for these envs
@@ -256,6 +315,9 @@ class UnitreeG1DishWipeFullBodyEnv(BaseEnv):
         for i in range(self.num_envs):
             rel = palm_pos[i, :2] - (plate_pos[:2] - plate_hs)
             norm = rel / (2.0 * plate_hs)
+            # Guard against NaN (e.g. robot has fallen, invalid pose)
+            if torch.isnan(norm).any():
+                continue
             gx = int(torch.clamp(norm[0] * self.grid_w, 0, self.grid_w - 1).item())
             gy = int(torch.clamp(norm[1] * self.grid_h, 0, self.grid_h - 1).item())
             prev_ratio = self._dirt_grids[i].get_cleaned_ratio()
@@ -266,8 +328,14 @@ class UnitreeG1DishWipeFullBodyEnv(BaseEnv):
     # ------------------------------------------------------------------
     # Observations
     # ------------------------------------------------------------------
+    def step(self, action):
+        obs, reward, terminated, truncated, info = super().step(action)
+        if isinstance(obs, torch.Tensor):
+            obs = torch.nan_to_num(obs, nan=0.0)
+        return obs, reward, terminated, truncated, info
+
     def _get_obs_extra(self, info: dict) -> dict:
-        palm_pos = self._palm_link.pose.p
+        palm_pos = torch.nan_to_num(self._palm_link.pose.p, nan=0.0)
         plate_pos = torch.tensor(PLATE_POS_IN_SINK, device=self.device).unsqueeze(0)
         palm_to_plate = plate_pos - palm_pos
 
@@ -282,8 +350,10 @@ class UnitreeG1DishWipeFullBodyEnv(BaseEnv):
         )
 
         tcp_pose = self._palm_link.pose
+        tcp_p = torch.nan_to_num(tcp_pose.p, nan=0.0)
+        tcp_q = torch.nan_to_num(tcp_pose.q, nan=0.0)
         return {
-            "tcp_pose": torch.cat([tcp_pose.p, tcp_pose.q], dim=-1),
+            "tcp_pose": torch.cat([tcp_p, tcp_q], dim=-1),
             "palm_pos": palm_pos,
             "plate_pos": plate_pos.expand_as(palm_pos),
             "palm_to_plate": palm_to_plate,
@@ -304,8 +374,13 @@ class UnitreeG1DishWipeFullBodyEnv(BaseEnv):
         success = ratios >= SUCCESS_CLEAN_RATIO
         fail = force_mag > FZ_HARD
 
+        # Detect NaN in palm position (simulation instability)
+        palm_pos = self._palm_link.pose.p
+        has_nan = torch.isnan(palm_pos).any(dim=-1)
+        fail = fail | has_nan
+
         return {
-            "success": success,
+            "success": success & ~has_nan,
             "fail": fail,
             "cleaned_ratio": ratios,
             "contact_force_mag": force_mag,
@@ -317,6 +392,10 @@ class UnitreeG1DishWipeFullBodyEnv(BaseEnv):
     def compute_dense_reward(self, obs: Any, action: torch.Tensor, info: dict) -> torch.Tensor:
         palm_pos = self._palm_link.pose.p
         plate_pos = torch.tensor(PLATE_POS_IN_SINK, device=self.device).unsqueeze(0)
+
+        # Guard against NaN (simulation instability)
+        has_nan = torch.isnan(palm_pos).any(dim=-1)
+        palm_pos = torch.nan_to_num(palm_pos, nan=0.0)
 
         # Stage 0: Reaching
         dist_reach = torch.norm(palm_pos - plate_pos, dim=-1)
@@ -334,7 +413,8 @@ class UnitreeG1DishWipeFullBodyEnv(BaseEnv):
         # Stage 3: Sweep bonus (lateral velocity while in contact)
         r_sweep = torch.zeros(self.num_envs, device=self.device)
         if self._prev_palm_pos is not None:
-            lateral_vel = torch.norm(palm_pos[:, :2] - self._prev_palm_pos[:, :2], dim=-1)
+            prev_safe = torch.nan_to_num(self._prev_palm_pos, nan=0.0)
+            lateral_vel = torch.norm(palm_pos[:, :2] - prev_safe[:, :2], dim=-1)
             r_sweep = W_SWEEP * is_contact * lateral_vel
 
         # Success bonus (one-shot)
@@ -358,7 +438,10 @@ class UnitreeG1DishWipeFullBodyEnv(BaseEnv):
         self._prev_actions = action.clone()
         self._prev_palm_pos = palm_pos.clone()
 
-        return r_reach + r_contact + r_clean + r_sweep + r_success + r_time + r_jerk + r_act + r_force
+        reward = r_reach + r_contact + r_clean + r_sweep + r_success + r_time + r_jerk + r_act + r_force
+        # Return large penalty for NaN states instead of NaN
+        reward = torch.where(has_nan, torch.tensor(-1.0, device=self.device), reward)
+        return reward
 
     def compute_normalized_dense_reward(self, obs, action, info) -> torch.Tensor:
         max_rew = W_REACH + W_CONTACT + W_CLEAN * self.grid_h * self.grid_w + SUCCESS_BONUS

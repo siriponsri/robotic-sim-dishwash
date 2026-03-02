@@ -1,0 +1,74 @@
+{
+  "version": "3.0",
+  "env_id": "UnitreeG1DishWipeFullBody-v1",
+  "robot": "unitree_g1 (37 DOF, full body, free root)",
+  "terms": [
+    {
+      "name": "r_clean",
+      "weight": 10.0,
+      "sign": "+",
+      "desc": "delta_clean progress"
+    },
+    {
+      "name": "r_reach",
+      "weight": 0.5,
+      "sign": "+",
+      "desc": "1-tanh(5*dist)"
+    },
+    {
+      "name": "r_contact",
+      "weight": 1.0,
+      "sign": "+",
+      "desc": "is_contacting plate"
+    },
+    {
+      "name": "r_sweep",
+      "weight": 0.3,
+      "sign": "+",
+      "desc": "lateral movement"
+    },
+    {
+      "name": "r_time",
+      "weight": 0.01,
+      "sign": "-",
+      "desc": "per step cost"
+    },
+    {
+      "name": "r_jerk",
+      "weight": 0.05,
+      "sign": "-",
+      "desc": "jerk^2"
+    },
+    {
+      "name": "r_act",
+      "weight": 0.005,
+      "sign": "-",
+      "desc": "action_norm^2"
+    },
+    {
+      "name": "r_force",
+      "weight": 0.01,
+      "sign": "-",
+      "desc": "excess force"
+    },
+    {
+      "name": "r_success",
+      "weight": 50.0,
+      "sign": "+",
+      "desc": "one-shot at 95%"
+    },
+    {
+      "name": "r_balance",
+      "weight": "TBD",
+      "sign": "-",
+      "desc": "penalty for tilt"
+    },
+    {
+      "name": "r_fall",
+      "weight": "TBD",
+      "sign": "-",
+      "desc": "terminate if fallen"
+    }
+  ],
+  "note": "Used in NB09 only (bonus task)"
+}

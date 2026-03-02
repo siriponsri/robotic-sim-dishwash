@@ -1,0 +1,26 @@
+{
+  "env_id": "UnitreeG1PlaceAppleInBowlFullBody-v1",
+  "obs_shape": [
+    94
+  ],
+  "act_shape": [
+    37
+  ],
+  "act_low": [
+    -1.0,
+    -1.0,
+    -1.0,
+    -1.0,
+    -1.0
+  ],
+  "act_high": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+  ],
+  "robot_uid": "unitree_g1",
+  "dof": 37,
+  "root_type": "free-floating"
+}

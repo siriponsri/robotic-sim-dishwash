@@ -1,0 +1,8 @@
+{
+  "mean_steps_to_end": 200.0,
+  "min_steps_to_end": 200,
+  "max_steps_to_end": 200,
+  "std_steps_to_end": 0.0,
+  "survived_full_ep": 10,
+  "n_episodes": 10
+}

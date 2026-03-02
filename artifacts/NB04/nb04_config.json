@@ -1,0 +1,9 @@
+{
+  "seed": 42,
+  "env_id": "UnitreeG1PlaceAppleInBowlFullBody-v1",
+  "control_mode": "pd_joint_delta_pos",
+  "obs_mode": "state",
+  "n_eval_episodes": 20,
+  "max_steps_per_ep": 200,
+  "smooth_alpha": 0.3
+}

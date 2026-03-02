@@ -1,0 +1,20 @@
+{
+  "apple": {
+    "steps_completed": 50,
+    "mean_reward": -0.022375911474227905,
+    "std_reward": 0.005148455530234,
+    "min_reward": -0.031007682904601097,
+    "max_reward": -0.008690993301570415,
+    "terminated": 0,
+    "truncated": 0
+  },
+  "dishwipe": {
+    "steps_completed": 50,
+    "mean_reward": -0.0011691477146814578,
+    "std_reward": 0.0003017834072755591,
+    "min_reward": -0.0017670048400759697,
+    "max_reward": 6.211882282514125e-05,
+    "terminated": 0,
+    "truncated": 0
+  }
+}

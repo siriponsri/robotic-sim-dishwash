@@ -1,0 +1,15 @@
+{
+  "n_episodes": 10,
+  "total_steps": 2000,
+  "mean": -0.022418428407050668,
+  "std": 0.0042158572783747,
+  "min": -0.037508778274059296,
+  "max": -0.007542770821601152,
+  "nonzero_pct": 100.0,
+  "positive_pct": 0.0,
+  "termination_counts": {
+    "success": 0,
+    "fall": 0,
+    "timeout": 0
+  }
+}

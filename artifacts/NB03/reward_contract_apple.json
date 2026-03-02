@@ -1,0 +1,53 @@
+{
+  "version": "3.0",
+  "env_id": "UnitreeG1PlaceAppleInBowlFullBody-v1",
+  "robot": "unitree_g1 (37 DOF, full body, free root)",
+  "max_normalized_reward": 10.0,
+  "stages": [
+    {
+      "name": "reaching",
+      "description": "Move hand toward apple",
+      "formula": "1 - tanh(5 * dist(hand, apple))",
+      "max": 1.0,
+      "sign": "+"
+    },
+    {
+      "name": "grasping",
+      "description": "Close hand around apple",
+      "formula": "1.0 if is_grasping(apple)",
+      "max": 1.0,
+      "sign": "+"
+    },
+    {
+      "name": "placing",
+      "description": "Move grasped apple toward bowl",
+      "formula": "1 - tanh(5 * dist(apple, bowl))",
+      "max": 1.0,
+      "sign": "+"
+    },
+    {
+      "name": "releasing",
+      "description": "Release apple into bowl",
+      "formula": "5.0 if apple_in_bowl AND hand_released",
+      "max": 5.0,
+      "sign": "+"
+    }
+  ],
+  "balance_terms": [
+    {
+      "name": "r_balance",
+      "description": "Penalty for torso tilt beyond threshold",
+      "sign": "-"
+    },
+    {
+      "name": "r_fall",
+      "description": "Terminate + large penalty if is_fallen()",
+      "sign": "-"
+    }
+  ],
+  "success_condition": "Apple in bowl (dist < 0.05) AND robot standing",
+  "failure_conditions": [
+    "Robot falls (is_fallen() = True)",
+    "Timeout (max_episode_steps exceeded)"
+  ]
+}

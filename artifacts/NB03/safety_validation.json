@@ -1,0 +1,8 @@
+{
+  "fall_detection_available": true,
+  "standing_detection_available": true,
+  "fall_terminates_episode": false,
+  "total_falls": 0,
+  "total_successes": 0,
+  "total_timeouts": 0
+}

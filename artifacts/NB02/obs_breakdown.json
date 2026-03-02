@@ -1,0 +1,13 @@
+{
+  "total_dims": 94,
+  "approximate_groups": {
+    "joint_positions (qpos)": 37,
+    "joint_velocities (qvel)": 37,
+    "torso_orientation": "4D (quaternion)",
+    "torso_angular_velocity": "3D",
+    "apple_position": "3D",
+    "bowl_position": "3D",
+    "hand_positions": "6D (left 3 + right 3)",
+    "grasp_state": "varies"
+  }
+}

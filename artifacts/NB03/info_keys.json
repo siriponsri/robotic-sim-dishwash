@@ -1,0 +1,9 @@
+{
+  "available_keys": [
+    "apple_height",
+    "dist_apple_bowl",
+    "elapsed_steps",
+    "fail",
+    "success"
+  ]
+}
