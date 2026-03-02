@@ -1,6 +1,6 @@
-# 07 — Evaluation & Reporting (NB09 Pipeline)
+# 07 — Evaluation & Reporting
 
-> เอกสารนี้อธิบาย evaluation pipeline แบบละเอียด: metrics, bootstrap CI, video, สรุปผล
+> เอกสารนี้อธิบาย evaluation pipeline (NB08) และ bonus (NB09)
 
 ---
 
@@ -11,7 +11,8 @@
 - [Deterministic Evaluation](#deterministic-evaluation)
 - [Bootstrap Confidence Interval](#bootstrap-confidence-interval)
 - [Comparison Plots](#comparison-plots)
-- [Video Recording](#video-recording)
+- [Winner Declaration](#winner-declaration)
+- [Bonus: DishWipe Cross-Task (NB09)](#bonus-dishwipe-cross-task-nb09)
 - [วิธีอ่านผลลัพธ์](#วิธีอ่านผลลัพธ์)
 - [Troubleshooting](#troubleshooting)
 
@@ -21,93 +22,66 @@
 
 ```mermaid
 graph TD
-    Models["โหลด Models<br/>PPO / SAC / Residual SAC"]
-    Baselines["โหลด Baselines<br/>Random / Heuristic"]
+    Models["โหลด Models<br/>PPO / SAC / Residual-SAC (best β)"]
+    Baselines["โหลด Baselines<br/>Random / Zero / Heuristic"]
     EvalLoop["Deterministic Evaluation<br/>100 episodes per method"]
-    Metrics["คำนวณ Metrics<br/>reward, cleaned, jerk, force, safety"]
-    Bootstrap["Bootstrap 95% CI<br/>1000 resamples"]
-    Plots["สร้าง Comparison Plots<br/>Bar charts + error bars"]
-    Video["สร้าง Video<br/>(best method, ถ้า render ได้)"]
-    Report["สรุปผล<br/>eval_table.csv + final_summary.json"]
+    Metrics["คำนวณ Metrics<br/>reward, success rate"]
+    Bootstrap["Bootstrap 95% CI<br/>10,000 resamples"]
+    Winner["Declare Winner<br/>→ best_method.json"]
+    Plots["Comparison Plots<br/>Bar + Violin + Success"]
+    Bonus["NB09: Train Winner<br/>on DishWipe Full-Body"]
 
     Models --> EvalLoop
     Baselines --> EvalLoop
     EvalLoop --> Metrics
     Metrics --> Bootstrap
     Bootstrap --> Plots
-    Bootstrap --> Report
-    EvalLoop --> Video
+    Bootstrap --> Winner
+    Winner -->|"best_method.json"| Bonus
 ```
 
-### Methods ที่ประเมิน
+### Methods ที่ประเมิน (NB08)
 
 | Method | Source | Episodes |
 |--------|--------|----------|
-| Random | NB05 (function) | 20 |
-| Heuristic | NB05 (function) | 20 |
-| PPO | NB06 (`ppo_model.zip`) | 100 |
-| SAC | NB07 (`sac_model.zip`) | 100 |
-| Residual SAC (best β) | NB08 (`residual_sac_beta*.zip`) | 100 |
+| PPO | `artifacts/NB05/ppo_apple.zip` | 200 |
+| SAC | `artifacts/NB06/sac_apple.zip` | 200 |
+| Residual-SAC (best β) | `artifacts/NB07/` + `best_beta.json` | 200 |
 
 ---
 
 ## Metrics ที่ประเมิน
 
-### Primary Metrics (สำคัญที่สุด)
-
-| Metric | คำอธิบาย | ดียิ่งขึ้นเมื่อ | สูตร |
-|--------|---------|------------|-----|
-| **success_rate** | สัดส่วน episode ที่ล้างครบ ≥95% | สูง ↑ | `count(cleaned ≥ 0.95) / total_episodes` |
-| **final_cleanliness** | cleaned_ratio เฉลี่ยตอนจบ | สูง ↑ | `mean(cleaned_ratio at terminal step)` |
-| **mean_reward** | reward รวมเฉลี่ยต่อ episode | สูง ↑ | `mean(sum of rewards per episode)` |
-
-### Secondary Metrics (คุณภาพการเคลื่อนไหว)
-
-| Metric | คำอธิบาย | ดียิ่งขึ้นเมื่อ | สูตร |
-|--------|---------|------------|-----|
-| **steps_to_95** | จำนวน step จนล้างครบ 95% (เฉพาะ episode ที่สำเร็จ) | ต่ำ ↓ | `mean(step where cleaned ≥ 0.95)` |
-| **mean_jerk** | ‖aₜ − aₜ₋₁‖² เฉลี่ย | ต่ำ ↓ | `mean(||action_diff||^2)` |
-| **p95_jerk** | percentile 95 ของ jerk | ต่ำ ↓ | `percentile(all_jerks, 95)` |
-| **mean_contact_force** | แรงสัมผัสเฉลี่ย (N) | ปานกลาง | `mean(contact_force per step)` |
-| **p95_contact_force** | percentile 95 ของแรง (N) | ต่ำ ↓ | `percentile(forces, 95)` |
-
-### Safety Metrics
+### Primary Metrics (Apple Task)
 
 | Metric | คำอธิบาย | ดียิ่งขึ้นเมื่อ |
 |--------|---------|------------|
-| **safety_violation_rate** | สัดส่วน episode ที่ force > FZ_HARD (200N) | ต่ำ ↓ |
-| **soft_violation_count** | จำนวน step ที่ force > FZ_SOFT (50N) | ต่ำ ↓ |
+| **mean_reward** | reward รวมเฉลี่ยต่อ episode | สูง ↑ |
+| **success_rate** | สัดส่วน episode ที่วาง apple ในชามสำเร็จ | สูง ↑ |
+| **mean_steps** | จำนวน step เฉลี่ยต่อ episode | ต่ำ ↓ (ถ้า success) |
+
+### Additional Metrics (DishWipe Bonus - NB09)
+
+| Metric | คำอธิบาย | ดียิ่งขึ้นเมื่อ |
+|--------|---------|------------|
+| **cleaned_ratio** | สัดส่วนจานที่สะอาด (0-1) | สูง ↑ |
+| **success_rate** | cleaned ≥ 0.95 | สูง ↑ |
 
 ---
 
 ## Deterministic Evaluation
 
-### ทำไมต้อง Deterministic?
-
-ตอน training, policy มี **noise/stochasticity** เพื่อ explore  
-ตอน eval ต้องใช้ **deterministic** เพื่อให้ผล **reproducible** และ **fair**
+ตอน training, policy มี noise/stochasticity เพื่อ explore
+ตอน eval ต้องใช้ **deterministic** เพื่อ reproducible + fair
 
 | Algorithm | Deterministic Mode |
 |-----------|--------------------|
-| **PPO** | เลือก action ที่ probability สูงสุด (mode ของ distribution) |
-| **SAC** | ใช้ mean ของ Gaussian (ไม่ sample จาก distribution) |
-| **Residual SAC** | SAC ใช้ mean + BaseController ใช้ค่าปกติ |
-
-### Code Pattern
+| **PPO** | Mode ของ distribution (action ที่ probability สูงสุด) |
+| **SAC** | Mean ของ Gaussian (ไม่ sample) |
+| **Residual SAC** | SAC mean + BaseController ค่าปกติ |
 
 ```python
-from stable_baselines3 import PPO
-
-model = PPO.load("artifacts/NB06/ppo_model.zip")
-
-obs, _ = env.reset(seed=42)
-rewards = []
-for step in range(max_steps):
-    action, _ = model.predict(obs, deterministic=True)  # deterministic!
-    obs, reward, terminated, truncated, info = env.step(action)
-    rewards.append(reward)
-    if terminated or truncated:
-        break
+action, _ = model.predict(obs, deterministic=True)
 ```
 
 ---
@@ -116,271 +90,148 @@ for step in range(max_steps):
 
 ### Bootstrap CI คืออะไร?
 
-เมื่อเรารัน 100 episodes ได้ metric เฉลี่ย แต่ค่านี้อาจ **ผันผวน** ถ้าเรารันอีกครั้ง  
-Bootstrap CI บอกว่า "ค่าจริงน่าจะอยู่ในช่วงนี้ด้วยความมั่นใจ 95%"
+เมื่อรัน 200 episodes ได้ค่าเฉลี่ย — แต่ค่านี้อาจผันผวน
+Bootstrap CI บอก "ค่าจริงน่าจะอยู่ในช่วงนี้ด้วยความมั่นใจ 95%"
 
-### สมการ (Percentile Bootstrap)
+### สูตร (Percentile Bootstrap)
 
-ให้ $X = [x_1, x_2, \ldots, x_n]$ เป็น metric จาก $n$ episodes:
+ให้ $X = [x_1, x_2, \ldots, x_n]$ เป็น metric จาก $n=200$ episodes:
 
-1. **Resample**: สุ่ม $n$ ตัวอย่างจาก $X$ (with replacement) → $X^*$
-2. คำนวณ statistic: $\bar{x}^* = \text{mean}(X^*)$
-3. ทำซ้ำ $B = 1000$ ครั้ง → ได้ $[\bar{x}^*_1, \ldots, \bar{x}^*_B]$
-4. เรียงลำดับ → ตัดที่ percentile 2.5% และ 97.5%
+1. **Resample**: สุ่ม $n$ ตัวอย่าง (with replacement) → $X^*$
+2. คำนวณ: $\bar{x}^* = \text{mean}(X^*)$
+3. ทำซ้ำ $B = 50{,}000$ ครั้ง
+4. เรียงลำดับ → ตัดที่ 2.5% และ 97.5%
 
-$$\text{CI}_{95\%} = \left[ \bar{x}^*_{(\lfloor 0.025B \rfloor)}, \; \bar{x}^*_{(\lfloor 0.975B \rfloor)} \right]$$
-
-### วิธีทำ (อธิบายง่าย)
-
-1. มี data = [reward₁, reward₂, ..., reward₁₀₀] จาก 100 episodes
-2. **Resample**: สุ่มหยิบ 100 ค่า (แบบมีการซ้ำ) → คำนวณ mean
-3. ทำซ้ำ 1,000 ครั้ง → ได้ 1,000 ค่า mean
-4. เรียงลำดับ → ตัด 2.5% ล่าง กับ 2.5% บน
-5. ช่วงที่เหลือ = **95% CI**
+$$\text{CI}_{95\%} = \left[ \bar{x}^*_{(0.025B)}, \; \bar{x}^*_{(0.975B)} \right]$$
 
 ### ตัวอย่างผล
 ```
-PPO success_rate: 0.65 (95% CI: [0.56, 0.74])
-SAC success_rate: 0.78 (95% CI: [0.70, 0.85])
+PPO:          mean_reward = 3.45 (95% CI: [2.89, 4.01])
+SAC:          mean_reward = 5.12 (95% CI: [4.56, 5.68])
+Residual-SAC: mean_reward = 6.78 (95% CI: [6.12, 7.44])
 ```
-→ SAC ดีกว่า PPO (CI ไม่ overlap ... ถ้า overlap = ไม่มั่นใจว่าต่างกัน)
+→ ถ้า CI ไม่ overlap = แตกต่างกันอย่างมีนัยสำคัญ
 
 ### Code
 
 ```python
-import numpy as np
-
-def bootstrap_ci(data, n_samples=1000, confidence=0.95):
-    """คำนวณ bootstrap confidence interval"""
+def bootstrap_ci(data, n_bootstrap=50000, ci=0.95):
     data = np.array(data)
-    means = []
-    for _ in range(n_samples):
-        sample = np.random.choice(data, size=len(data), replace=True)
-        means.append(np.mean(sample))
-    means = sorted(means)
-    lower = (1 - confidence) / 2
-    upper = 1 - lower
-    return {
-        "mean": float(np.mean(data)),
-        "ci_lower": float(np.percentile(means, lower * 100)),
-        "ci_upper": float(np.percentile(means, upper * 100)),
-    }
+    boot_stats = [np.mean(np.random.choice(data, len(data), replace=True))
+                  for _ in range(n_bootstrap)]
+    lower = np.percentile(boot_stats, (1-ci)/2 * 100)
+    upper = np.percentile(boot_stats, (1+ci)/2 * 100)
+    return lower, upper
 ```
-
-### การอ่านผล CI
-
-| ผล CI | ความหมาย |
-|------|---------|
-| CI แคบ (เช่น [0.76, 0.80]) | ผลเสถียร, ค่าจริงน่าจะใกล้ mean |
-| CI กว้าง (เช่น [0.45, 0.85]) | ผลไม่เสถียร, ต้องทดสอบเพิ่ม |
-| CI ไม่ overlap ระหว่าง 2 methods | ต่างกันมีนัยสำคัญ |
-| CI overlap | อาจไม่ต่างกันจริง |
-
----
-
-## Smoothing & Jerk Metrics (การปรับให้นิ่มนวล)
-
-### ทำไม Smoothing สำคัญ?
-
-ใน robotics การเคลื่อนไหวแบบกระตุก (jerky) ทำให้:
-- actuator สึกหรอ (wear) เร็วขึ้น
-- หุ่นยนต์อาจทำของเสียหายได้ (จานแตก)
-- ไม่ปลอดภัยสำหรับคนรอบข้าง
-
-### Jerk คืออะไร?
-
-**Jerk** วัดความเปลี่ยนแปลงของ action ต่อเนื่องกัน:
-
-$$\text{jerk}_t = \|a_t - a_{t-1}\|^2 = \sum_{d=1}^{25} (a_{t,d} - a_{t-1,d})^2$$
-
-$$\text{mean\_jerk} = \frac{1}{T} \sum_{t=1}^{T} \text{jerk}_t$$
-
-| Jerk ระดับ | ความหมาย |
-|---------|----------|
-| < 0.02 | smooth มาก (ดีเยี่ยม) |
-| 0.02–0.05 | พอใช้ได้ |
-| 0.05–0.10 | กระตุกบ้าง |
-| > 0.10 | กระตุกมาก (ไม่ดี) |
-
-### EMA Smoothing (ใช้ใน NB05 BaseController)
-
-$$\bar{a}_t = \alpha \cdot a_t + (1 - \alpha) \cdot \bar{a}_{t-1}, \quad \alpha = 0.3$$
-
-- $\alpha$ ก้าไป 1.0 → ไม่ smooth (ใช้ raw action)
-- $\alpha$ ก้าไป 0.0 → smooth มากเกิน (ไม่ responsive)
-- $\alpha = 0.3$ เป็นจุดสมดุลระหว่าง smoothness และ responsiveness
-
-### เปรียบเทียบ Jerk ก่อน-หลัง Smoothing
-
-| Policy | คาดการณ์ mean_jerk |
-|--------|---------------------|
-| Random | ~0.12 (กระตุกมาก) |
-| Heuristic (raw) | ~0.08 |
-| Heuristic + EMA | ~0.03–0.05 |
-| PPO (trained) | ~0.02–0.04 |
-| SAC (trained) | ~0.01–0.03 |
-| Residual SAC | ~0.01–0.03 |
-
-> PPO/SAC มี jerk penalty ใน reward ($r_{\text{jerk}} = -0.05 \times \|a_t - a_{t-1}\|^2$) จึงเรียนรู้การเคลื่อนไหวแบบ smooth โดยตรง
 
 ---
 
 ## Comparison Plots
 
-### Bar Chart (หลัก)
+NB08 สร้าง 3 plots:
 
-แต่ละ metric สร้าง bar chart เปรียบเทียบทุก method พร้อม error bar (95% CI):
+### Plot 1: Mean Reward with 95% CI
+- Bar chart: PPO vs SAC vs Residual-SAC
+- Error bars = 95% CI
+- ไฟล์: `comparison_plot.png`
 
-```
-Method         | ████████████████████      (mean ± CI)
-───────────────|──────────────────────────────────────
-Random         | ███                        0.02 ± 0.01
-Heuristic      | ███████                    0.15 ± 0.03
-PPO            | █████████████████          0.65 ± 0.09
-SAC            | ███████████████████████    0.78 ± 0.07
-Residual SAC   | ████████████████████████   0.85 ± 0.05
-```
+### Plot 2: Success Rate
+- Bar chart: success rate per method
+- ไฟล์: `success_rate_plot.png`
 
-### Metrics ที่ plot
+### Plot 3: Reward Distribution
+- Violin plot showing full distribution of rewards
+- ไฟล์: `reward_distribution.png`
 
-NB09 สร้าง comparison plot สำหรับ:
-1. `success_rate` — สัดส่วนสำเร็จ
-2. `final_cleanliness` — ความสะอาดตอนจบ
-3. `mean_reward` — reward เฉลี่ย
-4. `mean_jerk` — ความ smooth
-5. `safety_violation_rate` — ความปลอดภัย
+### Plot 4: Statistical Tests
+- Welch's t-test p-values + Cohen's d effect sizes for all method pairs
+- ไฟล์: `stat_tests.json`
 
 ---
 
-## Video Recording
+## Winner Declaration
 
-### วิธีสร้าง Video
+NB08 ประกาศผู้ชนะใน `best_method.json`:
 
-NB09 พยายามสร้าง video ของ **best method**:
-
-```python
-try:
-    frames = []
-    obs, _ = env.reset(seed=42)
-    for step in range(max_steps):
-        action, _ = best_model.predict(obs, deterministic=True)
-        obs, reward, terminated, truncated, info = env.step(action)
-        frame = env.render()  # อาจ fail บน CPU
-        frames.append(frame)
-        if terminated or truncated:
-            break
-    # save video
-    import imageio
-    imageio.mimsave("artifacts/NB09/best_method_video.mp4", frames, fps=30)
-except Exception as e:
-    print(f"⚠️ Render failed: {e}")
-    print("Saving comparison plot instead (no video)")
+```json
+{
+    "winner": "Residual-SAC",
+    "mean_reward": 6.78,
+    "ci95": [6.12, 7.44],
+    "success_rate": 0.45,
+    "reason": "Highest mean reward (6.78) over 100 episodes"
+}
 ```
 
-### Fallback (ถ้า Render ไม่ได้)
+### เกณฑ์การตัดสิน
+1. **Primary**: Mean reward สูงสุด
+2. **Tie-break**: Success rate สูงสุด
+3. **Note**: ถ้า CI overlap → ไม่มีนัยสำคัญ (บันทึกไว้ใน report)
 
-บนเครื่อง CPU-only อาจ render ไม่ได้ (Vulkan error)  
-NB09 จะ **skip video** แล้วสร้าง comparison plot แทน
+---
 
-### Render ทำงานเมื่อ
-- **RunPod GPU**: ✅ ใช้ EGL rendering
-- **Local GPU + Vulkan**: ✅
-- **Local CPU-only**: ❌ (expected — ไม่ใช่ bug)
+## Bonus: DishWipe Cross-Task (NB09)
+
+NB09 ใช้ winner จาก NB08 มาเทรนบน DishWipe:
+
+```mermaid
+graph LR
+    NB08["NB08<br/>best_method.json<br/>(e.g. Residual-SAC)"]
+    Train["Train Winner<br/>on DishWipe Full-Body<br/>2M steps, RTX 5090"]
+    Eval["Evaluate<br/>200 episodes"]
+    Cross["Cross-Task Comparison<br/>Apple vs DishWipe"]
+
+    NB08 --> Train
+    Train --> Eval
+    Eval --> Cross
+```
+
+### Cross-Task Comparison Table
+
+| Task | Method | mean_reward | success_rate |
+|------|--------|------------|-------------|
+| Apple | Residual-SAC | 6.78 | 0.45 |
+| DishWipe | Residual-SAC | X.XX | X.XX |
+
+> ช่วยบอกว่า method ที่ดีที่สุดสำหรับ Apple ทำได้ดีแค่ไหนกับงาน DishWipe
 
 ---
 
 ## วิธีอ่านผลลัพธ์
 
-### eval_table.csv
+### อ่าน comparison_table.csv
 
-ไฟล์นี้คือ **ตารางหลัก** ของ NB09:
-
-```csv
-method,success_rate,success_rate_ci_lo,success_rate_ci_hi,final_clean,final_clean_ci_lo,...
-random,0.00,0.00,0.00,0.00,0.00,...
-heuristic,0.05,0.00,0.10,0.15,0.10,...
-ppo,0.65,0.56,0.74,0.82,0.76,...
-sac,0.78,0.70,0.85,0.91,0.87,...
-residual_sac,0.85,0.78,0.91,0.94,0.90,...
+```
+method          mean_reward  std_reward  ci95_lo  ci95_hi  success_rate
+PPO             3.45         1.23        2.89     4.01     0.15
+SAC             5.12         0.89        4.56     5.68     0.32
+Residual-SAC    6.78         1.05        6.12     7.44     0.45
 ```
 
-### วิธีอ่าน
-1. ดู `success_rate` — method ไหนล้างจานครบบ่อยที่สุด?
-2. ดู CI — ผลมั่นใจแค่ไหน?
-3. ดู `mean_jerk` — movement smooth ไหม?
-4. ดู `safety_violation_rate` — ปลอดภัยไหม?
+**แปลผล:**
+- Residual-SAC ดีที่สุด (mean_reward สูงสุด)
+- CI ของ Residual-SAC ไม่ overlap กับ PPO → แตกต่างอย่างมีนัยสำคัญ
+- SAC กับ Residual-SAC อาจ overlap → ความแตกต่างไม่ชัด
 
-### eval_comparison.png
+### อ่าน best_method.json
 
-Plot รวมทุก metric ในรูปเดียว — ใช้สำหรับ presentation/report
-
-### final_summary.json
-
-```json
-{
-  "best_method": "residual_sac_beta0.5",
-  "best_success_rate": 0.85,
-  "best_cleaned_ratio": 0.94,
-  "methods_evaluated": ["random", "heuristic", "ppo", "sac", "residual_sac"],
-  "eval_episodes": 100,
-  "seed": 42,
-  "date": "2026-03-01"
-}
-```
+- `winner`: ชื่อ method ที่ NB09 จะใช้
+- `mean_reward`: ผล Apple task
+- `ci95`: ช่วงความเชื่อมั่น
 
 ---
 
 ## Troubleshooting
 
-### 1. `FileNotFoundError: ppo_model.zip`
-
-**สาเหตุ**: ยังไม่ได้เทรน model  
-**แก้**: รัน NB06/NB07/NB08 ก่อน NB09
-
-### 2. CI กว้างมาก
-
-**สาเหตุ**: จำนวน episodes น้อย  
-**แก้**: เพิ่ม `eval_episodes` (แนะนำ 100+)
-
-### 3. ทุก method ได้ success_rate = 0
-
-**สาเหตุ**: Budget training ไม่พอ (เช่น ใช้ CPU 20K steps)  
-**แก้**: เทรนบน GPU ด้วย 500K+ steps
-
-### 4. Video render failed
-
-**สาเหตุ**: ไม่มี GPU / Vulkan driver  
-**แก้**: ปกติบน CPU — NB09 จะ skip video อัตโนมัติ
-
-### 5. Bootstrap CI เป็น [0.0, 0.0]
-
-**สาเหตุ**: ทุก episode ได้ค่าเท่ากัน (เช่น success_rate = 0 ทุก ep)  
-**แก้**: ปกติสำหรับ baselines — ดูที่ RL methods แทน
-
-### 6. Method A และ B มี CI overlap
-
-**สาเหตุ**: ยังบอกไม่ได้ว่าต่างกันจริง  
-**แก้**:
-- เพิ่ม eval_episodes
-- เพิ่ม seeds (เทรนหลาย seed)
-- เพิ่ม training budget
+| ปัญหา | สาเหตุ | วิธีแก้ |
+|-------|--------|--------|
+| Model load error | path ผิด หรือ version ไม่ตรง | ตรวจ artifacts path, SB3 version |
+| eval แล้ว success=0 ทุก method | training ไม่ converge | ตรวจ learning curve, เพิ่ม steps |
+| Residual-SAC eval ผิด | ลืม ResidualActionWrapper | ต้อง wrap env เหมือนตอน train |
+| CI กว้างมาก | variance สูง / 200 eps อาจไม่พอ | ลอง 300 episodes |
+| NB09 fail | DishWipe env ยังไม่สร้าง | สร้าง `dishwipe_fullbody_env.py` ก่อน |
+| DishWipe "500K steps" | ค่าเก่า, ตอนนี้ใช้ 2M steps | ตรวจ config ใน NB09 |
 
 ---
 
-## Appendix: ตัวอย่างผลลัพธ์ที่ดี
-
-ค่าต่อไปนี้เป็น **ตัวอย่าง** ของผลลัพธ์ที่ดี (อาจแตกต่างตาม seed/hyperparams):
-
-| Method | Success Rate | Final Clean | Mean Reward | Mean Jerk | Safety Violations |
-|--------|-------------|-------------|-------------|-----------|-------------------|
-| Random | 0% | 0.00 | -0.60 | 0.12 | 0% |
-| Heuristic | 0-5% | 0.10-0.20 | -0.40 | 0.05 | 0% |
-| PPO (500K) | 40-70% | 0.75-0.90 | 15-30 | 0.03 | <2% |
-| SAC (500K) | 60-85% | 0.85-0.95 | 25-45 | 0.02 | <1% |
-| Residual SAC | 70-90% | 0.90-0.97 | 30-50 | 0.02 | <1% |
-
-> ⚠️ ค่าเหล่านี้เป็น **estimate** — ผลจริงขึ้นกับ training quality
-
----
-
-*ก่อนหน้า → [06 — Experiment Tracking](06_experiment_tracking.md) | กลับหน้าแรก → [README](../README.md)*
+*อัปเดตล่าสุด: มีนาคม 2026 | Full-Body G1 — Apple (NB08) + DishWipe Bonus (NB09)*

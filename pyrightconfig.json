@@ -1,0 +1,13 @@
+{
+  "root": ".",
+  "pythonVersion": "3.11",
+  "extraPaths": ["."],
+  "reportMissingImports": "none",
+  "reportMissingModuleSource": "none",
+  "exclude": [
+    ".env",
+    "__pycache__",
+    "ref-code",
+    "notebooks"
+  ]
+}

@@ -1,8 +1,10 @@
 # =============================================================================
-# Robotic-Sim — RunPod Dependencies (RTX 5090 GPU + CUDA)
+# Robotic-Sim — Python Dependencies
 # =============================================================================
-# Install on RunPod:
-#   pip install -r requirements.runpod.txt
+# Python 3.11 required.  Install:
+#   python -m pip install -r requirements.txt
+#
+# For RunPod (RTX 5090 GPU + CUDA), use requirements.runpod.txt instead.
 # =============================================================================
 
 # -- Core simulation --------------------------------------------------------

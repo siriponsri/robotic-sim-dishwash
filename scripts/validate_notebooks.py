@@ -6,8 +6,8 @@ import numpy as np
 import torch
 import gymnasium as gym
 
-from src.envs.dishwipe_env import (
-    UnitreeG1DishWipeEnv, PLATE_HALF_SIZE, CONTACT_THRESHOLD,
+from src.envs.dishwipe_env import (  # noqa: F401 — side-effect: registers env
+    PLATE_HALF_SIZE,
     W_CLEAN, W_REACH, W_CONTACT, W_TIME, W_JERK, W_ACT, W_FORCE,
     SUCCESS_BONUS, FZ_SOFT, FZ_HARD, SUCCESS_CLEAN_RATIO,
 )

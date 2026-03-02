@@ -51,28 +51,34 @@
 ## โครงสร้าง Experiment
 
 ```
-Experiment: "dishwipe_unitree_g1"
+Experiment: "g1_fullbody_apple_dishwipe"
 │
 ├── Run: NB01_setup_smoke_v2
-│   ├── params: seed=42, env_id=UnitreeG1DishWipe-v1, ...
-│   ├── metrics: obs_dim=168, act_dim=25
+│   ├── params: seed=42, env_id=UnitreeG1PlaceAppleInBowlFullBody-v1, ...
+│   ├── metrics: apple_obs_dim=~110, act_dim=37
 │   └── artifacts: env_spec.json, active_joints.json
 │
-├── Run: NB04_reward_contract_v2
+├── Run: NB03_reward_contract_v2
 │   ├── params: seed=42, test_episodes=5
-│   ├── metrics: mean_reward=-0.006
+│   ├── metrics: reward_range=[min, max]
 │   └── artifacts: reward_contract.json
 │
-├── Run: NB06_ppo_seed42_500k
-│   ├── params: lr=3e-4, batch_size=256, n_envs=4, ...
+|├── Run: NB05_ppo_seed42_2M
+│   ├── params: lr=3e-4→1e-5, batch_size=2048, n_envs=64, net=[512,512], ...
 │   ├── metrics: final_reward=XX, success_rate=XX
-│   └── artifacts: ppo_model.zip, learning_curve.png
+│   └── artifacts: ppo_apple.zip, learning_curve.png
 │
-├── Run: NB07_sac_seed42_500k
+├── Run: NB06_sac_seed42_2M
 │   └── ...
 │
-└── Run: NB08_residual_beta0.5_seed42
-    └── ...
+├── Run: NB07_residual_beta0.5_seed42
+│   └── ...
+│
+├── Run: NB08_evaluation_200ep
+│   └── artifacts: best_method.json, comparison_plot.png
+│
+└── Run: NB09_bonus_dishwipe_winner
+    └── artifacts: {winner}_dishwipe.zip, cross_task_comparison.png
 ```
 
 ---
@@ -84,14 +90,14 @@ Experiment: "dishwipe_unitree_g1"
 | NB | Params | Metrics | Artifacts |
 |----|--------|---------|-----------|
 | NB01 | seed, env_id, obs_mode | obs_dim, act_dim | env_spec.json |
-| NB02 | seed, grid_h, grid_w | contact_rate, coverage | grid_trace.csv |
-| NB03 | seed, brush_radii | cells_per_touch | brush_effect_demo.png |
-| NB04 | seed, test_eps | mean_reward, reward_range | reward_contract.json |
-| NB05 | seed, eval_episodes | random_reward, heuristic_reward | baseline_leaderboard.csv |
-| NB06 | lr, batch, n_envs, gamma, clip | final_reward, success_rate | ppo_model.zip, learning_curve.png |
-| NB07 | lr, batch, buffer, tau, gamma | final_reward, success_rate | sac_model.zip, learning_curve.png |
-| NB08 | betas, lr, buffer | best_beta, best_reward | residual_models, ablation_plot.png |
-| NB09 | eval_eps, bootstrap_n | per-method metrics | eval_table.csv, comparison.png |
+| NB02 | seed, n_steps | reward_per_step, obs_mapping | env_exploration_trace.csv |
+| NB03 | seed, test_eps | reward_range, fall_detection | reward_contract.json |
+| NB04 | seed, eval_episodes | random_reward, heuristic_reward | baseline_leaderboard.csv |
+| NB05 | lr, batch, n_envs, gamma, clip, net_arch | final_reward, success_rate | ppo_apple.zip, learning_curve.png |
+| NB06 | lr, batch, buffer, tau, gamma, net_arch | final_reward, success_rate | sac_apple.zip, learning_curve.png |
+| NB07 | betas, lr, buffer, net_arch | best_beta, best_reward | residual_apple_beta*.zip, ablation_plot.png |
+| NB08 | eval_eps, bootstrap_n, stat_tests | per-method metrics | best_method.json, comparison.png |
+| NB09 | winner_method, total_steps | dishwipe_reward, cross_task | {winner}_dishwipe.zip, cross_task.png |
 
 ---
 
@@ -159,8 +165,11 @@ with mlflow.start_run(run_name="NB06_ppo_seed42_500k"):
     mlflow.log_params({
         "seed": 42,
         "algorithm": "PPO",
-        "learning_rate": 3e-4,
-        "total_timesteps": 500_000,
+        "learning_rate": "3e-4->1e-5",
+        "total_timesteps": 2_000_000,
+        "n_envs": 64,
+        "net_arch": "[512,512]",
+        "activation": "ReLU",
     })
 
     # ... training ...
@@ -202,12 +211,14 @@ def log_training_run(run_name, params, metrics, artifact_paths):
 | NB | Run Name ตัวอย่าง |
 |----|--------------------|
 | NB01 | `NB01_setup_smoke_v2` |
-| NB02 | `NB02_grid_mapping_v2` |
-| NB04 | `NB04_reward_contract_v2` |
-| NB06 | `NB06_ppo_seed42_500k` |
-| NB07 | `NB07_sac_seed42_500k` |
-| NB08 | `NB08_residual_beta0.5_seed42` |
-| NB09 | `NB09_eval_final` |
+| NB02 | `NB02_env_exploration_v1` |
+| NB03 | `NB03_reward_contract_v1` |
+| NB04 | `NB04_baselines_v1` |
+| NB05 | `NB05_ppo_seed42_2M` |
+| NB06 | `NB06_sac_seed42_2M` |
+| NB07 | `NB07_residual_beta0.5_seed42` |
+| NB08 | `NB08_eval_200ep_v1` |
+| NB09 | `NB09_bonus_dishwipe_winner` |
 
 ### Metric Names
 
@@ -312,9 +323,9 @@ with mlflow.start_run():
 
 ### 4. ไม่ต้อง log ทุก step
 
-- Training metrics: log ทุก 1,000–10,000 steps
+- Training metrics: log ทุก 10,000–50,000 steps
 - Eval metrics: log ตอนจบ training
-- Model: save ตอนจบ (+ checkpoints ทุก 100K steps ถ้าต้องการ)
+- Model: save ตอนจบ (+ checkpoints ทุก 200K steps)
 
 ### 5. MLflow ล่มไม่กระทบ Training
 

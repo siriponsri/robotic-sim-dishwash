@@ -73,7 +73,7 @@ import torch
 from mani_skill.agents.robots.unitree_g1.g1_upper_body import UnitreeG1UpperBody
 from mani_skill.envs.sapien_env import BaseEnv
 from mani_skill.sensors.camera import CameraConfig
-from mani_skill.utils import common, sapien_utils
+from mani_skill.utils import sapien_utils
 from mani_skill.utils.registration import register_env
 from mani_skill.utils.scene_builder.kitchen_counter import KitchenCounterSceneBuilder
 from mani_skill.utils.structs.types import GPUMemoryConfig, SceneConfig, SimConfig
@@ -86,8 +86,6 @@ from src.envs.dirt_grid import VirtualDirtGrid
 PLATE_HALF_SIZE = (0.10, 0.10, 0.003)          # half-extents XYZ
 PLATE_POS_IN_SINK = (0.10, 0.20, 0.58)         # plate inside kitchen sink basin
 # Sink basin at scale=0.82: x∈[-0.01,0.32], y∈[0.04,0.49], z∈[0.56,0.79]
-# Deprecated alias — kept for backward compat, will be removed
-PLATE_POS_ON_COUNTER = PLATE_POS_IN_SINK
 
 GRID_H, GRID_W = 10, 10
 BRUSH_RADIUS = 1                                 # 3x3 cleaning footprint
@@ -319,20 +317,6 @@ class UnitreeG1DishWipeEnvBase(BaseEnv):
     def _get_palm_pos(self) -> torch.Tensor:
         """Return (num_envs, 3) world position of left palm link."""
         return self.agent.robot.links_map["left_palm_link"].pose.p
-
-    def _get_left_tcp_pos(self) -> torch.Tensor:
-        """Return (num_envs, 3) world position of left TCP (kept for compat).
-
-        Note: ``agent.left_tcp`` is defined by ``UnitreeG1UpperBody._after_init``
-        as ``robot.links_map['left_tcp_link']``.  This helper is used only
-        for observations; contact detection uses multi-link palm + fingers.
-        """
-        assert hasattr(self.agent, "left_tcp"), (
-            "Agent has no 'left_tcp' attribute — check robot URDF or "
-            "UnitreeG1UpperBody._after_init(). "
-            f"Available attrs: {[a for a in dir(self.agent) if 'tcp' in a.lower()]}"
-        )
-        return self.agent.left_tcp.pose.p
 
     # ------------------------------------------------------------------
     # Dirt grid update
