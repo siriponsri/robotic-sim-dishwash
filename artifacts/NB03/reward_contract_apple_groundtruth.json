@@ -1,0 +1,62 @@
+{
+  "version": "3.1-groundtruth",
+  "env_id": "UnitreeG1PlaceAppleInBowlFullBody-v1",
+  "robot": "unitree_g1_fullbody_fixed (37 DOF, fix_root_link=True, balance_passive_force=True)",
+  "control_mode": "pd_joint_delta_pos",
+  "reward_modes": [
+    "dense",
+    "normalized_dense",
+    "sparse",
+    "none"
+  ],
+  "max_positive_reward": 58.0,
+  "stages": [
+    {
+      "name": "reaching",
+      "formula": "1.0 * (1 - tanh(5 * ||tcp_pos - apple_pos||))",
+      "max": 1.0,
+      "sign": "+"
+    },
+    {
+      "name": "grasp",
+      "formula": "2.0 * 1[||tcp_pos-apple_pos|| < 0.01]",
+      "max": 2.0,
+      "sign": "+"
+    },
+    {
+      "name": "place",
+      "formula": "5.0 * is_grasped * (1 - tanh(5 * ||apple_pos - (bowl_pos + [0,0,0.15])||))",
+      "max": 5.0,
+      "sign": "+"
+    },
+    {
+      "name": "success_bonus",
+      "formula": "50.0 if success else 0",
+      "max": 50.0,
+      "sign": "+"
+    }
+  ],
+  "penalties": [
+    {
+      "name": "time",
+      "formula": "-0.01 per step",
+      "sign": "-"
+    },
+    {
+      "name": "jerk",
+      "formula": "-0.05 * ||a_t - a_(t-1)||^2",
+      "sign": "-"
+    },
+    {
+      "name": "act",
+      "formula": "-0.005 * ||a_t||^2",
+      "sign": "-"
+    }
+  ],
+  "success_condition": "dist(apple_pos, bowl_pos) <= 0.05 and fail == False",
+  "failure_conditions": [
+    "fail == True (NaN / simulation explosion)",
+    "timeout (max_episode_steps exceeded)"
+  ],
+  "normalized_dense_definition": "normalized_dense = dense / 58.0"
+}

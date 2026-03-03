@@ -153,7 +153,7 @@ W_ACT = 0.005
 SUCCESS_BONUS = 50.0
 
 # Safety
-GRASP_THRESHOLD = 0.01          # m — apple-TCP distance to count as grasped
+GRASP_THRESHOLD = 0.05          # m — apple-TCP distance to count as grasped (palm ~5cm)
 
 # Scene scale
 KITCHEN_SCENE_SCALE = 0.82
@@ -295,8 +295,10 @@ class UnitreeG1PlaceAppleInBowlFullBodyEnv(BaseEnv):
         self.bowl.set_pose(sapien.Pose(p=bowl_xyz[0].cpu().numpy()))
 
         # State tracking
+        # Use shape[-1] to get action_dim; in batched envs action_space.shape
+        # is (num_envs, action_dim) so shape[0] would wrongly return num_envs.
         self._prev_actions = torch.zeros(
-            b, self.agent.action_space.shape[0],
+            b, self.agent.action_space.shape[-1],
             dtype=torch.float32, device=self.device,
         )
         self._apple_init_z = apple_xyz[:, 2].clone()

@@ -1,0 +1,1 @@
+episode,t,reward,r_pred,r_err,dist_reach,dist_place,is_grasped,success,fail,action_norm,jerk_norm,termination

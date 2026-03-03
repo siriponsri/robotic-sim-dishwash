@@ -61,9 +61,9 @@ python -m pip install -r requirements.runpod.txt
 # 5. ตรวจว่าทุกอย่างพร้อม
 python scripts/runpod_verify.py
 
-# 6. ตั้งค่า MLflow credentials
+# 6. ตั้งค่า .env.local (Vulkan + MLflow credentials)
 Copy-Item .env.example .env.local
-# แก้ .env.local ใส่ MLFLOW_TRACKING_URI, USERNAME, PASSWORD
+# แก้ .env.local — Vulkan vars ตั้งค่ามาให้แล้ว ใส่เพิ่มแค่ MLFLOW credentials
 
 # 7. เปิด VS Code → เลือก interpreter → .env/Scripts/python.exe
 # 8. เปิด notebooks/NB01_setup_smoke.ipynb → Run All
@@ -147,12 +147,13 @@ git clone https://github.com/siriponsri/robotic-sim-dishwash.git
 cd robotic-sim-dishwash
 
 # ติดตั้ง dependencies + ตรวจ GPU
+# (runpod_setup.sh จะ: apt install mesa-vulkan-drivers + สร้าง .env.local ให้อัตโนมัติ)
 bash scripts/runpod_setup.sh /workspace/robotic-sim-dishwash
 python -c "import torch; print(torch.cuda.get_device_name(0))"
 # ต้องเห็น: NVIDIA GeForce RTX 5090
 
-# ตั้งค่า MLflow
-cp .env.example .env.local && nano .env.local
+# ตั้งค่า MLflow (optional — แก้เฉพาะ MLFLOW_* ใน .env.local ที่สร้างมาให้แล้ว)
+nano .env.local
 ```
 
 ### 6) รัน Notebooks
@@ -237,12 +238,13 @@ robotic-sim/
 │   ├── dirt_grid.py             ← VirtualDirtGrid (10×10)
 │   └── __init__.py
 ├── scripts/                     ← Setup scripts
-│   ├── runpod_setup.sh
+│   ├── runpod_setup.sh          ← ติดตั้ง apt + venv + สร้าง .env.local
 │   └── runpod_verify.py
 ├── artifacts/                   ← ผลลัพธ์จากแต่ละ NB (auto-generated)
 ├── ref-code/                    ← Reference code (original lab)
-├── .env.example                 ← Template สำหรับ MLflow credentials
-└── requirements.runpod.txt      ← Dependencies
+├── .env.example                 ← Template (Vulkan vars + MLflow) — copy → .env.local
+├── .env.local                   ← ⚠️ auto-created by runpod_setup.sh — NEVER commit
+└── requirements.runpod.txt      ← Python dependencies
 ```
 
 ---
@@ -308,6 +310,8 @@ robotic-sim/
 ## ข้อควรระวังสำคัญ
 
 - ⚠️ **ห้ามใส่ secrets/token ลงใน code หรือ commit ขึ้น Git** — ใช้ `.env.local` + `.gitignore`
+- ⚠️ **`.env.local` สร้างอัตโนมัติโดย `runpod_setup.sh`** — มี `VK_ICD_FILENAMES` (Lavapipe) + MLflow template พร้อมใช้
+- ⚠️ **Headless Vulkan ต้องการ `mesa-vulkan-drivers`** — ติดตั้งอัตโนมัติโดย `runpod_setup.sh` (`apt install`)
 - ⚠️ **ห้ามกด "Run All" บน NB05–NB07 บน CPU** — จะใช้เวลานานมาก
 - ⚠️ **Robot คือ full-body (37 DOF)** — ไม่ใช่ upper body (25 DOF)
 - ⚠️ **NB09 ต้องรัน NB08 ก่อน** — ต้องมี `best_method.json`
@@ -322,3 +326,4 @@ robotic-sim/
 ---
 
 *อัปเดตล่าสุด: มีนาคม 2026 | Full-Body G1 (37 DOF) — Apple (Main) + DishWipe (Bonus)*
+*Headless Vulkan fixed: `mesa-vulkan-drivers` + auto `.env.local` via `runpod_setup.sh`*

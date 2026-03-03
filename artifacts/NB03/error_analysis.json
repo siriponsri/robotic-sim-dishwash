@@ -1,0 +1,24 @@
+{
+  "reward_decomposition_error": {
+    "mean_abs": NaN,
+    "p95_abs": NaN,
+    "p99_abs": NaN,
+    "note": "If these are large, observation extraction may be missing keys OR env reward definition changed."
+  },
+  "fail_nan_episodes": {
+    "count": 0,
+    "examples": [],
+    "note": "fail_nan indicates NaN states / simulation explosion (ground truth from env.evaluate())."
+  },
+  "action_jerk_stats_dense_smooth": {
+    "action_norm_mean": 0.792442798614502,
+    "action_norm_p95": 0.9476973414421082,
+    "jerk_norm_mean": 0.358656644821167,
+    "jerk_norm_p95": 0.40594980120658875
+  },
+  "normalized_dense_reward_range": {
+    "min": -0.0003770602634176612,
+    "max": 0.0016001275507733226,
+    "mean": 0.0002846262650564313
+  }
+}

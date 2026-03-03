@@ -1,8 +1,13 @@
 {
-  "fall_detection_available": true,
-  "standing_detection_available": true,
-  "fall_terminates_episode": false,
-  "total_falls": 0,
-  "total_successes": 0,
-  "total_timeouts": 0
+  "primary_failure_mode": "fail_nan (info['fail'] from evaluate())",
+  "termination_counts_from_dense_smooth": {
+    "success": 0,
+    "fail_nan": 0,
+    "timeout": 0,
+    "other": 20
+  },
+  "notes": [
+    "If fail_nan rate is high, reduce exploration magnitude, add action smoothing, or tighten physics stability checks.",
+    "For training: consider reward_mode='normalized_dense' to keep return scale stable across algorithms."
+  ]
 }

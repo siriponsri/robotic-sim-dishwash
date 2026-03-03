@@ -1,0 +1,32 @@
+{
+  "dense_random": {
+    "policy": "random",
+    "reward_mode": "dense",
+    "n_eps": 20,
+    "success_rate": 0.0,
+    "fail_nan_rate": 0.0,
+    "timeout_rate": 0.0,
+    "mean_return": -375.9140960261226,
+    "mean_len": 300.0
+  },
+  "dense_smooth_random": {
+    "policy": "smooth_random",
+    "reward_mode": "dense",
+    "n_eps": 20,
+    "success_rate": 0.0,
+    "fail_nan_rate": 0.0,
+    "timeout_rate": 0.0,
+    "mean_return": 15.666222035657848,
+    "mean_len": 300.0
+  },
+  "normalized_dense_smooth_random": {
+    "policy": "smooth_random",
+    "reward_mode": "normalized_dense",
+    "n_eps": 5,
+    "success_rate": 0.0,
+    "fail_nan_rate": 0.0,
+    "timeout_rate": 0.0,
+    "mean_return": 0.0853878845963834,
+    "mean_len": 300.0
+  }
+}

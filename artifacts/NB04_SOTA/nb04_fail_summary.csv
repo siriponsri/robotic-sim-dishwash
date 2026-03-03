@@ -1,0 +1,7 @@
+policy,fail_type,count
+directional_name_mapped,timeout,10
+naive_arm_extend,timeout,10
+random,timeout,10
+random_smooth,timeout,10
+rls_pseudo_jacobian,timeout,10
+stand_only,timeout,10

@@ -1,0 +1,8 @@
+{
+  "stand_only": "/root/robotic-sim-dishwash/artifacts/NB04_SOTA/stand_only.gif",
+  "random": "/root/robotic-sim-dishwash/artifacts/NB04_SOTA/random.gif",
+  "random_smooth": "/root/robotic-sim-dishwash/artifacts/NB04_SOTA/random_smooth.gif",
+  "naive_arm_extend": "/root/robotic-sim-dishwash/artifacts/NB04_SOTA/naive_arm_extend.gif",
+  "directional_name_mapped": "/root/robotic-sim-dishwash/artifacts/NB04_SOTA/directional_name_mapped.gif",
+  "rls_pseudo_jacobian": "/root/robotic-sim-dishwash/artifacts/NB04_SOTA/rls_pseudo_jacobian.gif"
+}

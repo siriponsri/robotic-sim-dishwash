@@ -1,7 +1,13 @@
 {
   "seed": 42,
   "env_id": "UnitreeG1PlaceAppleInBowlFullBody-v1",
+  "obs_mode": "state",
   "control_mode": "pd_joint_delta_pos",
-  "n_test_episodes": 10,
-  "n_steps_per_episode": 200
+  "reward_mode": "dense",
+  "render_mode": "rgb_array",
+  "render_backend": "cpu",
+  "n_test_episodes": 20,
+  "max_steps_per_episode": 300,
+  "capture_episode_index": 0,
+  "capture_every_k_steps": 5
 }
